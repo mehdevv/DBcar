@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Véhicules Algérie — Base de données</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f0e;
+    --surface: #141614;
+    --surface2: #1c1f1c;
+    --border: #2a2e2a;
+    --border2: #363a36;
+    --accent: #b8f04a;
+    --accent-dim: #8ab535;
+    --text: #e8ede8;
+    --text2: #8a9488;
+    --text3: #5a6058;
+    --cat-voitures: #4af0a8;
+    --cat-suv: #f0a84a;
+    --cat-util: #a84af0;
+    --cat-other: #f04a7a;
+    --radius: 10px;
+    --radius-lg: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 40px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+  }
+  .stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: right;
+  }
+  .stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    padding: 24px 40px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(13,15,14,0.96);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .search-wrap {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  input[type="search"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px 10px 38px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="search"]:focus { border-color: var(--accent); }
+  input[type="search"]::placeholder { color: var(--text3); }
+
+  .filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .pill:hover { border-color: var(--accent-dim); color: var(--text); }
+  .pill.active { background: var(--accent); color: #0d0f0e; border-color: var(--accent); }
+
+  .view-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+  }
+  .view-btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .view-btn.active { background: var(--border2); color: var(--text); }
+
+  /* ── Result count ── */
+  .result-bar {
+    padding: 12px 40px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+  .result-bar span { color: var(--accent); }
+
+  /* ── Main grid ── */
+  .main {
+    padding: 32px 40px;
+  }
+
+  /* ── Category section ── */
+  .category-section {
+    margin-bottom: 48px;
+  }
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .category-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .category-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .category-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 3px 8px;
+    background: var(--surface2);
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Brand block ── */
+  .brands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .brand-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .brand-card:hover { border-color: var(--border2); }
+
+  .brand-header {
+    padding: 16px 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .brand-header:hover .brand-name { color: var(--accent); }
+  .brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    transition: color 0.15s;
+  }
+  .brand-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .model-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .chevron {
+    color: var(--text3);
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  .brand-card.open .chevron { transform: rotate(180deg); }
+
+  .models-list {
+    display: none;
+    padding: 4px 0;
+  }
+  .brand-card.open .models-list { display: block; }
+
+  .model-row {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .model-row:last-child { border-bottom: none; }
+  .model-row:hover { background: var(--surface2); }
+
+  .model-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .engines-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .engine-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .engine-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    flex-shrink: 0;
+  }
+
+  /* ── Table view ── */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr {
+    border-bottom: 1px solid var(--border2);
+  }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    background: var(--surface);
+  }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+
+  .cat-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .engine-mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* ── Hidden / visible ── */
+  .hidden { display: none !important; }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 16px; }
+  .empty-text { font-size: 15px; }
+
+  @media (max-width: 600px) {
+    header, .controls, .main, .result-bar { padding-left: 20px; padding-right: 20px; }
+    .stats { gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Véhicules <span>Algérie</span></h1>
+    <p>algeria_vehicles_seed.sql — avril 2026</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">Catégories</div></div>
+    <div class="stat"><div class="stat-num">31</div><div class="stat-label">Marques</div></div>
+    <div class="stat"><div class="stat-num">71</div><div class="stat-label">Modèles</div></div>
+    <div class="stat"><div class="stat-num">88</div><div class="stat-label">Motorisations</div></div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="search" id="searchInput" placeholder="Rechercher marque, modèle, moteur…" autocomplete="off">
+  </div>
+  <div class="filter-pills" id="filterPills">
+    <button class="pill active" data-cat="all">Tout</button>
+    <button class="pill" data-cat="cat-voitures">Voitures</button>
+    <button class="pill" data-cat="cat-suv">SUV / Crossover</button>
+    <button class="pill" data-cat="cat-utilitaires">Utilitaires</button>
+    <button class="pill" data-cat="cat-camions">Camions & Bus</button>
+    <button class="pill" data-cat="cat-motos">Motos</button>
+  </div>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btnCards" title="Cartes">▦</button>
+    <button class="view-btn" id="btnTable" title="Tableau">≡</button>
+  </div>
+</div>
+
+<div class="result-bar" id="resultBar">Affichage de <span id="resultCount">88</span> motorisations</div>
+
+<div class="main" id="cardsView"></div>
+<div class="main hidden" id="tableView"></div>
+
+<script>
+const DB = {
+  categories: [
+    { id: 'cat-voitures',    name: 'Voitures',        color: '#4af0a8' },
+    { id: 'cat-suv',         name: 'SUV / Crossover', color: '#f0a84a' },
+    { id: 'cat-utilitaires', name: 'Utilitaires',     color: '#a84af0' },
+    { id: 'cat-camions',     name: 'Camions & Bus',   color: '#f04a7a' },
+    { id: 'cat-motos',       name: 'Motos & Scooters',color: '#4aaaf0' },
+  ],
+  brands: [
+    { id:'brand-dacia',       name:'Dacia',        cat:'cat-voitures' },
+    { id:'brand-renault',     name:'Renault',      cat:'cat-voitures' },
+    { id:'brand-fiat',        name:'Fiat',         cat:'cat-voitures' },
+    { id:'brand-chery',       name:'Chery',        cat:'cat-voitures' },
+    { id:'brand-geely',       name:'Geely',        cat:'cat-voitures' },
+    { id:'brand-toyota',      name:'Toyota',       cat:'cat-voitures' },
+    { id:'brand-hyundai',     name:'Hyundai',      cat:'cat-voitures' },
+    { id:'brand-kia',         name:'Kia',          cat:'cat-voitures' },
+    { id:'brand-vw',          name:'Volkswagen',   cat:'cat-voitures' },
+    { id:'brand-mercedes',    name:'Mercedes-Benz',cat:'cat-voitures' },
+    { id:'brand-peugeot',     name:'Peugeot',      cat:'cat-voitures' },
+    { id:'brand-opel',        name:'Opel',         cat:'cat-voitures' },
+    { id:'brand-suv-dacia',   name:'Dacia',        cat:'cat-suv' },
+    { id:'brand-suv-chery',   name:'Chery',        cat:'cat-suv' },
+    { id:'brand-suv-geely',   name:'Geely',        cat:'cat-suv' },
+    { id:'brand-suv-haval',   name:'Haval',        cat:'cat-suv' },
+    { id:'brand-suv-toyota',  name:'Toyota',       cat:'cat-suv' },
+    { id:'brand-suv-hyundai', name:'Hyundai',      cat:'cat-suv' },
+    { id:'brand-suv-kia',     name:'Kia',          cat:'cat-suv' },
+    { id:'brand-suv-dfsk',    name:'DFSK',         cat:'cat-suv' },
+    { id:'brand-suv-jac',     name:'JAC',          cat:'cat-suv' },
+    { id:'brand-suv-byd',     name:'BYD',          cat:'cat-suv' },
+    { id:'brand-suv-changan', name:'Changan',      cat:'cat-suv' },
+    { id:'brand-suv-zotye',   name:'Zotye',        cat:'cat-suv' },
+    { id:'brand-util-fiat',   name:'Fiat',         cat:'cat-utilitaires' },
+    { id:'brand-util-renault',name:'Renault',      cat:'cat-utilitaires' },
+    { id:'brand-util-peugeot',name:'Peugeot',      cat:'cat-utilitaires' },
+    { id:'brand-util-dfsk',   name:'DFSK',         cat:'cat-utilitaires' },
+    { id:'brand-util-jac',    name:'JAC',          cat:'cat-utilitaires' },
+    { id:'brand-util-mercedes',name:'Mercedes-Benz',cat:'cat-utilitaires' },
+    { id:'brand-util-toyota', name:'Toyota',       cat:'cat-utilitaires' },
+  ],
+  models: [
+    { id:'model-dacia-logan',        name:'Logan',          brand:'brand-dacia' },
+    { id:'model-dacia-sandero',      name:'Sandero',        brand:'brand-dacia' },
+    { id:'model-dacia-sandero-sw',   name:'Sandero Stepway',brand:'brand-dacia' },
+    { id:'model-renault-clio',       name:'Clio',           brand:'brand-renault' },
+    { id:'model-renault-symbol',     name:'Symbol',         brand:'brand-renault' },
+    { id:'model-renault-logan',      name:'Logan',          brand:'brand-renault' },
+    { id:'model-fiat-500',           name:'500 Hybrid',     brand:'brand-fiat' },
+    { id:'model-fiat-tipo',          name:'Tipo',           brand:'brand-fiat' },
+    { id:'model-fiat-500x',          name:'500X',           brand:'brand-fiat' },
+    { id:'model-chery-arrizo5',      name:'Arrizo 5',       brand:'brand-chery' },
+    { id:'model-chery-arrizo6',      name:'Arrizo 6',       brand:'brand-chery' },
+    { id:'model-toyota-corolla',     name:'Corolla',        brand:'brand-toyota' },
+    { id:'model-toyota-yaris',       name:'Yaris',          brand:'brand-toyota' },
+    { id:'model-hyundai-i10',        name:'i10',            brand:'brand-hyundai' },
+    { id:'model-hyundai-i20',        name:'i20',            brand:'brand-hyundai' },
+    { id:'model-hyundai-accent',     name:'Accent',         brand:'brand-hyundai' },
+    { id:'model-kia-rio',            name:'Rio',            brand:'brand-kia' },
+    { id:'model-kia-picanto',        name:'Picanto',        brand:'brand-kia' },
+    { id:'model-vw-golf',            name:'Golf',           brand:'brand-vw' },
+    { id:'model-vw-polo',            name:'Polo',           brand:'brand-vw' },
+    { id:'model-peugeot-208',        name:'208',            brand:'brand-peugeot' },
+    { id:'model-peugeot-301',        name:'301',            brand:'brand-peugeot' },
+    { id:'model-opel-corsa',         name:'Corsa',          brand:'brand-opel' },
+    { id:'model-opel-astra',         name:'Astra',          brand:'brand-opel' },
+    { id:'model-dacia-duster',       name:'Duster',         brand:'brand-suv-dacia' },
+    { id:'model-dacia-jogger',       name:'Jogger',         brand:'brand-suv-dacia' },
+    { id:'model-chery-tiggo2',       name:'Tiggo 2 Pro',    brand:'brand-suv-chery' },
+    { id:'model-chery-tiggo4',       name:'Tiggo 4 Pro',    brand:'brand-suv-chery' },
+    { id:'model-chery-tiggo7',       name:'Tiggo 7 Pro',    brand:'brand-suv-chery' },
+    { id:'model-chery-tiggo8',       name:'Tiggo 8 Pro',    brand:'brand-suv-chery' },
+    { id:'model-geely-coolray',      name:'Coolray',        brand:'brand-suv-geely' },
+    { id:'model-geely-gx3pro',       name:'GX3 Pro',        brand:'brand-suv-geely' },
+    { id:'model-geely-emgrand',      name:'Emgrand X7',     brand:'brand-suv-geely' },
+    { id:'model-haval-h6',           name:'H6',             brand:'brand-suv-haval' },
+    { id:'model-haval-jolion',       name:'Jolion',         brand:'brand-suv-haval' },
+    { id:'model-toyota-rav4',        name:'RAV4',           brand:'brand-suv-toyota' },
+    { id:'model-toyota-hilux',       name:'Hilux',          brand:'brand-suv-toyota' },
+    { id:'model-toyota-land-cruiser',name:'Land Cruiser',   brand:'brand-suv-toyota' },
+    { id:'model-toyota-fortuner',    name:'Fortuner',       brand:'brand-suv-toyota' },
+    { id:'model-hyundai-tucson',     name:'Tucson',         brand:'brand-suv-hyundai' },
+    { id:'model-hyundai-creta',      name:'Creta',          brand:'brand-suv-hyundai' },
+    { id:'model-kia-sportage',       name:'Sportage',       brand:'brand-suv-kia' },
+    { id:'model-kia-seltos',         name:'Seltos',         brand:'brand-suv-kia' },
+    { id:'model-dfsk-glory500',      name:'Glory 500',      brand:'brand-suv-dfsk' },
+    { id:'model-dfsk-glory580',      name:'Glory 580',      brand:'brand-suv-dfsk' },
+    { id:'model-dfsk-glory600',      name:'Glory 600',      brand:'brand-suv-dfsk' },
+    { id:'model-jac-js4',            name:'JS4',            brand:'brand-suv-jac' },
+    { id:'model-jac-js6',            name:'JS6',            brand:'brand-suv-jac' },
+    { id:'model-byd-song',           name:'Song Plus',      brand:'brand-suv-byd' },
+    { id:'model-byd-seagull',        name:'Seagull',        brand:'brand-suv-byd' },
+    { id:'model-byd-atto3',          name:'Atto 3',         brand:'brand-suv-byd' },
+    { id:'model-changan-cs35',       name:'CS35 Plus',      brand:'brand-suv-changan' },
+    { id:'model-changan-cs55',       name:'CS55 Plus',      brand:'brand-suv-changan' },
+    { id:'model-changan-cs75',       name:'CS75 Plus',      brand:'brand-suv-changan' },
+    { id:'model-zotye-t300',         name:'T300',           brand:'brand-suv-zotye' },
+    { id:'model-zotye-t700',         name:'T700',           brand:'brand-suv-zotye' },
+    { id:'model-fiat-doblo',         name:'Doblò',          brand:'brand-util-fiat' },
+    { id:'model-fiat-scudo',         name:'Scudo',          brand:'brand-util-fiat' },
+    { id:'model-fiat-ducato',        name:'Ducato',         brand:'brand-util-fiat' },
+    { id:'model-renault-trafic',     name:'Trafic',         brand:'brand-util-renault' },
+    { id:'model-renault-master',     name:'Master',         brand:'brand-util-renault' },
+    { id:'model-renault-express',    name:'Express',        brand:'brand-util-renault' },
+    { id:'model-peugeot-partner',    name:'Partner',        brand:'brand-util-peugeot' },
+    { id:'model-peugeot-boxer',      name:'Boxer',          brand:'brand-util-peugeot' },
+    { id:'model-dfsk-c31',           name:'C31',            brand:'brand-util-dfsk' },
+    { id:'model-dfsk-c35',           name:'C35',            brand:'brand-util-dfsk' },
+    { id:'model-jac-x200',           name:'X200',           brand:'brand-util-jac' },
+    { id:'model-mercedes-sprinter',  name:'Sprinter',       brand:'brand-util-mercedes' },
+    { id:'model-mercedes-vito',      name:'Vito',           brand:'brand-util-mercedes' },
+    { id:'model-toyota-hiace',       name:'Hiace',          brand:'brand-util-toyota' },
+    { id:'model-toyota-hilux-util',  name:'Hilux',          brand:'brand-util-toyota' },
+  ],
+  engines: [
+    { id:'eng-logan-10-sce',     model:'model-dacia-logan',        label:'1.0 SCe 75ch — 2021-2025',       year:2021 },
+    { id:'eng-logan-10-tce',     model:'model-dacia-logan',        label:'1.0 TCe 100ch — 2021-2025',      year:2021 },
+    { id:'eng-logan-15-dci',     model:'model-dacia-logan',        label:'1.5 dCi 90ch — 2013-2022',       year:2018 },
+    { id:'eng-sandero-10-sce',   model:'model-dacia-sandero',      label:'1.0 SCe 65ch — 2021-2025',       year:2021 },
+    { id:'eng-sandero-10-tce',   model:'model-dacia-sandero',      label:'1.0 TCe 90ch — 2021-2025',       year:2021 },
+    { id:'eng-sandero-15-dci',   model:'model-dacia-sandero',      label:'1.5 dCi 75ch — 2013-2021',       year:2018 },
+    { id:'eng-sw-10-tce90',      model:'model-dacia-sandero-sw',   label:'1.0 TCe 90ch — 2021-2025',       year:2021 },
+    { id:'eng-sw-10-tce110',     model:'model-dacia-sandero-sw',   label:'1.0 TCe 110ch — 2022-2025',      year:2022 },
+    { id:'eng-sw-15-dci',        model:'model-dacia-sandero-sw',   label:'1.5 dCi 90ch — 2016-2022',       year:2018 },
+    { id:'eng-clio-10-sce',      model:'model-renault-clio',       label:'1.0 SCe 65ch — 2019-2025',       year:2019 },
+    { id:'eng-clio-10-tce100',   model:'model-renault-clio',       label:'1.0 TCe 100ch — 2019-2025',      year:2019 },
+    { id:'eng-clio-15-dci',      model:'model-renault-clio',       label:'1.5 dCi 85ch — 2013-2021',       year:2018 },
+    { id:'eng-symbol-16-16v',    model:'model-renault-symbol',     label:'1.6 16v 105ch — 2008-2022',      year:2015 },
+    { id:'eng-symbol-15-dci',    model:'model-renault-symbol',     label:'1.5 dCi 90ch — 2008-2020',       year:2015 },
+    { id:'eng-rlogn-10-sce',     model:'model-renault-logan',      label:'1.0 SCe 75ch — 2021-2025',       year:2021 },
+    { id:'eng-rlogn-15-dci',     model:'model-renault-logan',      label:'1.5 dCi 90ch — 2013-2021',       year:2018 },
+    { id:'eng-500h-10-70',       model:'model-fiat-500',           label:'1.0 Hybrid 70ch — 2023-2025',    year:2023 },
+    { id:'eng-tipo-16-110',      model:'model-fiat-tipo',          label:'1.6 eTorq 110ch AT — 2023-2025', year:2023 },
+    { id:'eng-500x-14-140',      model:'model-fiat-500x',          label:'1.4 Turbo 140ch DCT — 2023-2025',year:2023 },
+    { id:'eng-arrizo5-15-tci',   model:'model-chery-arrizo5',      label:'1.5 CVT 115ch — 2020-2025',      year:2020 },
+    { id:'eng-arrizo5-15t-156',  model:'model-chery-arrizo5',      label:'1.5T 156ch DCT — 2022-2025',     year:2022 },
+    { id:'eng-arrizo6-15t-147',  model:'model-chery-arrizo6',      label:'1.5T 147ch DCT — 2020-2025',     year:2020 },
+    { id:'eng-corolla-18-140',   model:'model-toyota-corolla',     label:'1.8 VVT-i 140ch AT — 2019-2025', year:2019 },
+    { id:'eng-corolla-12t-116',  model:'model-toyota-corolla',     label:'1.2T 116ch CVT — 2019-2025',     year:2019 },
+    { id:'eng-yaris-10-72',      model:'model-toyota-yaris',       label:'1.0 VVT-i 72ch MT — 2017-2023',  year:2020 },
+    { id:'eng-yaris-15-116',     model:'model-toyota-yaris',       label:'1.5 VVT-i 116ch AT — 2020-2025', year:2020 },
+    { id:'eng-i20-10t-100',      model:'model-hyundai-i20',        label:'1.0 T-GDI 100ch MT — 2020-2025', year:2020 },
+    { id:'eng-i20-12-84',        model:'model-hyundai-i20',        label:'1.2 84ch MT — 2018-2024',         year:2020 },
+    { id:'eng-accent-14-100',    model:'model-hyundai-accent',     label:'1.4 100ch AT — 2018-2023',        year:2020 },
+    { id:'eng-accent-16-124',    model:'model-hyundai-accent',     label:'1.6 124ch AT — 2018-2023',        year:2020 },
+    { id:'eng-rio-10t-100',      model:'model-kia-rio',            label:'1.0 T-GDI 100ch MT — 2017-2024', year:2020 },
+    { id:'eng-rio-14-100',       model:'model-kia-rio',            label:'1.4 100ch AT — 2017-2024',        year:2020 },
+    { id:'eng-duster-10-tce90',  model:'model-dacia-duster',       label:'1.0 TCe 90ch 4x2 — 2021-2025',   year:2021 },
+    { id:'eng-duster-13-tce150', model:'model-dacia-duster',       label:'1.3 TCe 150ch 4x4 — 2021-2025',  year:2021 },
+    { id:'eng-duster-15-dci115', model:'model-dacia-duster',       label:'1.5 dCi 115ch 4x4 — 2018-2022',  year:2019 },
+    { id:'eng-duster-15-dci90',  model:'model-dacia-duster',       label:'1.5 dCi 90ch 4x2 — 2018-2022',   year:2019 },
+    { id:'eng-jogger-10-100',    model:'model-dacia-jogger',       label:'1.0 TCe 100ch MT — 2022-2025',   year:2022 },
+    { id:'eng-jogger-10-110',    model:'model-dacia-jogger',       label:'1.0 TCe 110ch AT — 2022-2025',   year:2022 },
+    { id:'eng-tiggo2-15-115',    model:'model-chery-tiggo2',       label:'1.5 VVT 115ch MT — 2021-2025',   year:2021 },
+    { id:'eng-tiggo2-15-115cvt', model:'model-chery-tiggo2',       label:'1.5 VVT 115ch CVT — 2021-2025',  year:2021 },
+    { id:'eng-tiggo4-15t-147',   model:'model-chery-tiggo4',       label:'1.5T 147ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-tiggo4-15-108',    model:'model-chery-tiggo4',       label:'1.5 108ch CVT — 2021-2025',      year:2021 },
+    { id:'eng-tiggo7-15t-156',   model:'model-chery-tiggo7',       label:'1.5T 156ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-tiggo7-16t-197',   model:'model-chery-tiggo7',       label:'1.6T 197ch DCT — 2023-2025',     year:2023 },
+    { id:'eng-tiggo8-15t-197',   model:'model-chery-tiggo8',       label:'1.5T 197ch DCT — 2022-2025',     year:2022 },
+    { id:'eng-tiggo8-20t-254',   model:'model-chery-tiggo8',       label:'2.0T 254ch DCT AWD — 2022-2025', year:2022 },
+    { id:'eng-coolray-15t-177',  model:'model-geely-coolray',      label:'1.5T 177ch 7DCT — 2021-2025',    year:2021 },
+    { id:'eng-coolray-15t-181',  model:'model-geely-coolray',      label:'1.5T 181ch 7DCT — 2023-2025',    year:2023 },
+    { id:'eng-gx3-10-102',       model:'model-geely-gx3pro',       label:'1.0T 102ch MT — 2021-2025',      year:2021 },
+    { id:'eng-gx3-13-150',       model:'model-geely-gx3pro',       label:'1.3T 150ch DCT — 2022-2025',     year:2022 },
+    { id:'eng-h6-15t-169',       model:'model-haval-h6',           label:'1.5T 169ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-h6-20t-224',       model:'model-haval-h6',           label:'2.0T 224ch 8AT — 2021-2025',     year:2021 },
+    { id:'eng-jolion-15t-150',   model:'model-haval-jolion',       label:'1.5T 150ch 7DCT — 2021-2025',    year:2021 },
+    { id:'eng-rav4-20-173',      model:'model-toyota-rav4',        label:'2.0 173ch CVT — 2019-2025',      year:2021 },
+    { id:'eng-rav4-25h-218',     model:'model-toyota-rav4',        label:'2.5 Hybrid 218ch e-CVT — 2019-2025',year:2021 },
+    { id:'eng-hilux-28d-204',    model:'model-toyota-hilux',       label:'2.8 D-4D 204ch AT 4x4 — 2016-2025',year:2020 },
+    { id:'eng-hilux-24d-150',    model:'model-toyota-hilux',       label:'2.4 D-4D 150ch MT 4x4 — 2016-2025',year:2020 },
+    { id:'eng-lc-40d-309',       model:'model-toyota-land-cruiser',label:'3.3 D-4D V6 309ch AT — 2022-2025',year:2022 },
+    { id:'eng-lc-28d-204',       model:'model-toyota-land-cruiser',label:'2.8 D-4D 204ch AT — 2016-2021',  year:2018 },
+    { id:'eng-tucson-16t-177',   model:'model-hyundai-tucson',     label:'1.6 T-GDI 177ch DCT — 2021-2025',year:2021 },
+    { id:'eng-tucson-20-156',    model:'model-hyundai-tucson',     label:'2.0 MPi 156ch AT — 2016-2022',   year:2018 },
+    { id:'eng-sportage-16t-177', model:'model-kia-sportage',       label:'1.6 T-GDI 177ch AT — 2022-2025', year:2022 },
+    { id:'eng-sportage-20-150',  model:'model-kia-sportage',       label:'2.0 MPI 150ch AT — 2016-2022',   year:2018 },
+    { id:'eng-dfsk580-15t-147',  model:'model-dfsk-glory580',      label:'1.5T 147ch DCT — 2019-2025',     year:2021 },
+    { id:'eng-dfsk600-20t-218',  model:'model-dfsk-glory600',      label:'2.0T 218ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-js4-15t-156',      model:'model-jac-js4',            label:'1.5T 156ch DCT — 2022-2025',     year:2022 },
+    { id:'eng-js6-20t-218',      model:'model-jac-js6',            label:'2.0T 218ch AT — 2022-2025',      year:2022 },
+    { id:'eng-song-18-dmi',      model:'model-byd-song',           label:'1.8 DM-i PHEV 120ch — 2023-2025',year:2023 },
+    { id:'eng-song-15t-136',     model:'model-byd-song',           label:'1.5T Essence 136ch AT — 2023-2025',year:2023 },
+    { id:'eng-seagull-elec-75',  model:'model-byd-seagull',        label:'Électrique 75ch — 2023-2025',    year:2023 },
+    { id:'eng-atto3-elec-204',   model:'model-byd-atto3',          label:'Électrique 204ch AWD — 2022-2025',year:2022 },
+    { id:'eng-cs35-15t-156',     model:'model-changan-cs35',       label:'1.5T 156ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-cs55-15t-188',     model:'model-changan-cs55',       label:'1.5T 188ch DCT — 2021-2025',     year:2021 },
+    { id:'eng-cs75-20t-254',     model:'model-changan-cs75',       label:'2.0T 254ch AT — 2021-2025',      year:2021 },
+    { id:'eng-t300-15t-150',     model:'model-zotye-t300',         label:'1.5T 150ch DCT — 2022-2025',     year:2022 },
+    { id:'eng-t700-20t-218',     model:'model-zotye-t700',         label:'2.0T 218ch AT — 2022-2025',      year:2022 },
+    { id:'eng-doblo-16hdi-90',   model:'model-fiat-doblo',         label:'1.6 HDi 90ch MT — 2023-2025',    year:2023 },
+    { id:'eng-scudo-20hdi-150',  model:'model-fiat-scudo',         label:'2.0 HDi 150ch MT — 2023-2025',   year:2023 },
+    { id:'eng-ducato-22d-140',   model:'model-fiat-ducato',        label:'2.2 Diesel 140ch MT — 2023-2025',year:2023 },
+    { id:'eng-ducato-20d-122',   model:'model-fiat-ducato',        label:'2.0 Diesel 122ch MT — 2020-2023',year:2020 },
+    { id:'eng-trafic-20d-145',   model:'model-renault-trafic',     label:'2.0 dCi 145ch MT — 2019-2025',   year:2020 },
+    { id:'eng-master-23d-135',   model:'model-renault-master',     label:'2.3 dCi 135ch MT — 2019-2025',   year:2020 },
+    { id:'eng-partner-15d-100',  model:'model-peugeot-partner',    label:'1.5 BlueHDi 100ch MT — 2018-2025',year:2020 },
+    { id:'eng-boxer-20d-130',    model:'model-peugeot-boxer',      label:'2.0 BlueHDi 130ch MT — 2018-2025',year:2020 },
+    { id:'eng-c35-15-114',       model:'model-dfsk-c35',           label:'1.5 114ch MT — 2019-2025',        year:2021 },
+    { id:'eng-sprinter-22d-163', model:'model-mercedes-sprinter',  label:'2.2 CDI 163ch AT — 2018-2025',   year:2020 },
+    { id:'eng-vito-20d-163',     model:'model-mercedes-vito',      label:'2.0 CDI 163ch AT — 2019-2025',   year:2020 },
+    { id:'eng-hiace-28d-177',    model:'model-toyota-hiace',       label:'2.8 D-4D 177ch AT — 2019-2025',  year:2020 },
+  ]
+};
+
+// Build lookup maps
+const catMap = Object.fromEntries(DB.categories.map(c => [c.id, c]));
+const brandMap = Object.fromEntries(DB.brands.map(b => [b.id, b]));
+const modelMap = Object.fromEntries(DB.models.map(m => [m.id, m]));
+
+// Enrich: attach engines to models, models to brands, brands to categories
+DB.models.forEach(m => { m.engines = []; });
+DB.engines.forEach(e => {
+  const m = modelMap[e.model];
+  if (m) m.engines.push(e);
+});
+DB.brands.forEach(b => {
+  b.models = DB.models.filter(m => m.brand === b.id);
+  b.category = catMap[b.cat];
+});
+DB.categories.forEach(c => {
+  c.brands = DB.brands.filter(b => b.cat === c.id);
+});
+
+let activeCat = 'all';
+let searchQuery = '';
+let viewMode = 'cards';
+
+function enginesCount(brands) {
+  return brands.reduce((sum, b) => sum + b.models.reduce((s2, m) => s2 + m.engines.length, 0), 0);
+}
+
+function matches(str, q) {
+  return str.toLowerCase().includes(q.toLowerCase());
+}
+
+function filterBrand(brand, q, cat) {
+  if (cat !== 'all' && brand.cat !== cat) return false;
+  if (!q) return true;
+  if (matches(brand.name, q)) return true;
+  return brand.models.some(m =>
+    matches(m.name, q) || m.engines.some(e => matches(e.label, q))
+  );
+}
+
+function filterModel(model, q) {
+  if (!q) return true;
+  const brand = brandMap[model.brand];
+  if (matches(model.name, q)) return true;
+  if (brand && matches(brand.name, q)) return true;
+  return model.engines.some(e => matches(e.label, q));
+}
+
+function renderCards() {
+  const container = document.getElementById('cardsView');
+  const q = searchQuery;
+  const cat = activeCat;
+
+  let totalEngines = 0;
+  let html = '';
+
+  DB.categories.forEach(c => {
+    if (cat !== 'all' && cat !== c.id) return;
+
+    const visibleBrands = c.brands.filter(b => filterBrand(b, q, 'all'));
+    if (!visibleBrands.length) return;
+
+    const brandCount = visibleBrands.length;
+    const engCount = enginesCount(visibleBrands);
+    totalEngines += engCount;
+
+    html += `<div class="category-section" data-cat="${c.id}">
+      <div class="category-header">
+        <div class="category-dot" style="background:${c.color}"></div>
+        <div class="category-title" style="color:${c.color}">${c.name}</div>
+        <div class="category-count">${brandCount} marques · ${engCount} motorisations</div>
+      </div>
+      <div class="brands-grid">`;
+
+    visibleBrands.forEach(brand => {
+      const visibleModels = brand.models.filter(m => filterModel(m, q));
+      if (!visibleModels.length) return;
+
+      const modCount = visibleModels.length;
+      const engCount2 = visibleModels.reduce((s, m) => s + m.engines.length, 0);
+
+      html += `<div class="brand-card" onclick="this.classList.toggle('open')">
+        <div class="brand-header">
+          <div class="brand-name">${brand.name}</div>
+          <div class="brand-meta">
+            <span class="model-count">${modCount} modèle${modCount>1?'s':''} · ${engCount2} moteur${engCount2>1?'s':''}</span>
+            <span class="chevron">▼</span>
+          </div>
+        </div>
+        <div class="models-list">`;
+
+      visibleModels.forEach(model => {
+        html += `<div class="model-row">
+          <div class="model-name">${model.name}</div>
+          <div class="engines-list">`;
+        model.engines.forEach(e => {
+          html += `<div class="engine-tag"><span class="engine-dot"></span>${e.label}</div>`;
+        });
+        html += `</div></div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  if (!html) {
+    html = `<div class="empty">
+      <div class="empty-icon">○</div>
+      <div class="empty-text">Aucun résultat pour "${q}"</div>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+  document.getElementById('resultCount').textContent = totalEngines;
+}
+
+function renderTable() {
+  const container = document.getElementById('tableView');
+  const q = searchQuery;
+  const cat = activeCat;
+
+  let rows = '';
+  let count = 0;
+
+  DB.engines.forEach(e => {
+    const model = modelMap[e.model];
+    if (!model) return;
+    const brand = brandMap[model.brand];
+    if (!brand) return;
+    const category = catMap[brand.cat];
+    if (!category) return;
+
+    if (cat !== 'all' && brand.cat !== cat) return;
+
+    if (q) {
+      const haystack = [brand.name, model.name, e.label, category.name].join(' ');
+      if (!matches(haystack, q)) return;
+    }
+
+    count++;
+    rows += `<tr>
+      <td><span class="cat-badge" style="background:${category.color}22;color:${category.color}">${category.name}</span></td>
+      <td style="font-weight:600">${brand.name}</td>
+      <td>${model.name}</td>
+      <td class="engine-mono">${e.label}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text3)">${e.year}</td>
+    </tr>`;
+  });
+
+  if (!rows) {
+    rows = `<tr><td colspan="5" style="text-align:center;padding:60px 20px;color:var(--text3)">Aucun résultat pour "${q}"</td></tr>`;
+  }
+
+  container.innerHTML = `<div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Catégorie</th>
+          <th>Marque</th>
+          <th>Modèle</th>
+          <th>Motorisation</th>
+          <th>Année</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+
+  document.getElementById('resultCount').textContent = count;
+}
+
+function render() {
+  if (viewMode === 'cards') {
+    renderCards();
+    document.getElementById('cardsView').classList.remove('hidden');
+    document.getElementById('tableView').classList.add('hidden');
+  } else {
+    renderTable();
+    document.getElementById('tableView').classList.remove('hidden');
+    document.getElementById('cardsView').classList.add('hidden');
+  }
+}
+
+// Search
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  render();
+});
+
+// Category pills
+document.getElementById('filterPills').addEventListener('click', e => {
+  const pill = e.target.closest('.pill');
+  if (!pill) return;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  activeCat = pill.dataset.cat;
+  render();
+});
+
+// View toggle
+document.getElementById('btnCards').addEventListener('click', () => {
+  viewMode = 'cards';
+  document.getElementById('btnCards').classList.add('active');
+  document.getElementById('btnTable').classList.remove('active');
+  render();
+});
+document.getElementById('btnTable').addEventListener('click', () => {
+  viewMode = 'table';
+  document.getElementById('btnTable').classList.add('active');
+  document.getElementById('btnCards').classList.remove('active');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
